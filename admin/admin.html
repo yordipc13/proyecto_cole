@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Administración · Solicitudes de estudiantes · CTP Uladislao Gámez Solano</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <link rel="stylesheet" href="admin.css">
+</head>
+<body class="admin-body">
+
+    <header class="admin-header">
+        <div class="brand">
+            <span class="brand-mark" aria-hidden="true">CTP</span>
+            <div>
+                <p class="brand-name">CTP Uladislao Gámez Solano</p>
+                <p class="brand-sub">Ministerio de Educación Pública</p>
+            </div>
+        </div>
+        <div class="header-actions">
+            <span class="connection-status">Conectado a Supabase</span>
+            <button id="themeToggle" type="button" class="btn btn-theme" aria-pressed="false">Modo oscuro</button>
+            <button id="logoutButton" type="button" class="btn btn-outline hidden">Cerrar sesión</button>
+        </div>
+    </header>
+
+    <main class="admin-main">
+        <p class="eyebrow">Solicitudes</p>
+        <div class="title-row">
+            <div>
+                <h1>Administración de solicitudes</h1>
+                <p class="subtitle">Consulte, edite y elimine las solicitudes registradas por las empresas.</p>
+            </div>
+            <a href="../index.html" class="btn btn-outline">Volver al formulario</a>
+        </div>
+
+        <p id="panelStatus" class="status-line hidden" role="status" aria-live="polite"></p>
+
+        <!-- LOGIN -->
+        <section id="loginSection" class="card hidden" aria-labelledby="loginTitle">
+            <h2 id="loginTitle" class="card-title">Acceso del personal</h2>
+            <p class="card-subtitle">Acceso reservado al personal autorizado.</p>
+            <form id="loginForm" class="login-form" autocomplete="on">
+                <label>Correo institucional
+                    <input id="loginEmail" type="email" required autocomplete="username">
+                </label>
+                <label>Contraseña
+                    <input id="loginPassword" type="password" required autocomplete="current-password">
+                </label>
+                <button type="submit" class="btn btn-primary">Ingresar</button>
+            </form>
+        </section>
+
+        <!-- PANEL -->
+        <section id="adminPanel" class="hidden" aria-label="Panel de administración">
+
+            <!-- OFERTA ANUAL -->
+            <section class="card" aria-labelledby="offerManagementTitle">
+                <div class="card-head">
+                    <div>
+                        <h2 id="offerManagementTitle" class="card-title">Oferta anual</h2>
+                        <p id="activeOfferSummary" class="card-subtitle">Sin ciclo publicado.</p>
+                    </div>
+                    <button id="configureCycleButton" type="button" class="btn btn-outline">Configurar ciclo</button>
+                </div>
+            </section>
+
+            <!-- SOLICITUDES -->
+            <section class="card card-accent" aria-labelledby="requestsTitle">
+                <div class="toolbar">
+                    <input id="searchFilter" type="search" class="search-input" placeholder="Buscar en las solicitudes…" aria-label="Buscar en las solicitudes">
+                    <select id="columnFilter" aria-label="Buscar en columna">
+                        <option value="">Todas las columnas</option>
+                        <option value="empresa">Empresa</option>
+                        <option value="contacto">Contacto</option>
+                        <option value="email">Correo</option>
+                        <option value="telefono">Teléfono</option>
+                        <option value="puesto">Puesto</option>
+                    </select>
+                    <select id="cycleFilter" aria-label="Filtrar por ciclo"><option value="">Todos los ciclos</option></select>
+                    <select id="modalityFilter" aria-label="Filtrar por modalidad">
+                        <option value="">Todas las modalidades</option>
+                        <option>Práctica profesional</option>
+                        <option>Pasantía</option>
+                    </select>
+                    <select id="statusFilter" aria-label="Filtrar por estado">
+                        <option value="">Todos los estados</option>
+                        <option value="recibida">Recibida</option>
+                        <option value="en_revision">En revisión</option>
+                        <option value="contactada">Contactada</option>
+                        <option value="cerrada">Cerrada</option>
+                    </select>
+                    <button id="refreshButton" type="button" class="btn btn-outline">Actualizar</button>
+                </div>
+
+                <div class="table-meta">
+                    <p id="recordCount" class="record-count"></p>
+                    <p class="hint">Clic derecho sobre una fila para editar o eliminar.</p>
+                </div>
+
+                <div class="table-wrap">
+                    <table class="requests-table">
+                        <thead>
+                            <tr>
+                                <th>Solicitud</th>
+                                <th>Empresa y contacto</th>
+                                <th>Ciclo</th>
+                                <th>Modalidad</th>
+                                <th>Especialidades</th>
+                                <th>Estado</th>
+                            </tr>
+                        </thead>
+                        <tbody id="requestsTable"></tbody>
+                    </table>
+                </div>
+            </section>
+        </section>
+
+    </main>
+
+    <!-- MODAL CONFIGURAR CICLO -->
+    <div id="cycleModal" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="cycleModalTitle">
+        <div class="modal-card modal-medium">
+            <div class="modal-head">
+                <div>
+                    <h2 id="cycleModalTitle" class="card-title">Configurar ciclo</h2>
+                    <p class="card-subtitle">Estado del ciclo: <span id="cycleModalState"></span></p>
+                </div>
+                <button id="cycleModalClose" type="button" class="btn btn-ghost">Cerrar</button>
+            </div>
+            <div class="grid-2 mt-4">
+                <label>Ciclo
+                    <select id="cycleModalSelect"></select>
+                </label>
+                <label id="cycleYearField">Año del nuevo ciclo
+                    <input id="cycleModalYear" type="number" min="2026" max="2100">
+                </label>
+            </div>
+            <p class="card-subtitle mt-4">Elija la modalidad que desea configurar.</p>
+            <div id="modalityChoices" class="modality-choices"></div>
+            <p id="cycleModalStatus" class="status-line hidden" role="status" aria-live="polite"></p>
+            <div class="btn-row justify-end mt-5">
+                <button id="closeCycleButton" type="button" class="btn btn-danger hidden">Cerrar ciclo</button>
+                <button id="publishCycleButton" type="button" class="btn btn-primary">Publicar ciclo</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL EDITOR DE MODALIDAD -->
+    <div id="offerEditorModal" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="offerEditorTitle">
+        <div class="modal-card modal-xl">
+            <div class="modal-head">
+                <div>
+                    <h2 id="offerEditorTitle" class="card-title">Modalidad</h2>
+                    <p class="card-subtitle">Estado del ciclo: <span id="offerEditorState"></span></p>
+                </div>
+                <button id="offerBack" type="button" class="btn btn-outline">Volver al ciclo</button>
+            </div>
+            <p id="offerPublishedNotice" class="status-line status-info hidden">Este ciclo está publicado: los cambios se aplican de inmediato al formulario público.</p>
+            <label class="switch-label switch-main">
+                <input id="offerAvailable" type="checkbox">
+                <span>Modalidad disponible para solicitudes</span>
+            </label>
+            <div class="grid-3 mt-4">
+                <label>Horas<input id="offerHours" type="number" min="1" step="1"></label>
+                <label>Fecha de inicio<input id="offerStart" type="date"></label>
+                <label>Fecha de cierre<input id="offerEnd" type="date"></label>
+            </div>
+            <div class="copy-row mt-4">
+                <label>Copiar desde un ciclo anterior
+                    <select id="offerCopySource"></select>
+                </label>
+                <button id="offerCopyButton" type="button" class="btn btn-outline" disabled>Copiar datos</button>
+            </div>
+            <div class="specialty-head mt-5">
+                <h3 class="card-title">Especialidades</h3>
+                <p class="card-subtitle">Marque las especialidades disponibles en el formulario público.</p>
+            </div>
+            <div class="add-specialty">
+                <input id="newSpecialtyInput" type="text" placeholder="Nueva especialidad" aria-label="Nueva especialidad">
+                <button id="addSpecialtyButton" type="button" class="btn btn-primary">Agregar</button>
+            </div>
+            <div id="specialtyRows" class="specialty-list"></div>
+            <p id="offerEditorStatus" class="status-line hidden" role="status" aria-live="polite"></p>
+        </div>
+    </div>
+
+    <!-- MODAL EDITAR -->
+    <div id="editModal" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="editTitle">
+        <form id="editForm" class="modal-card modal-wide">
+            <h2 id="editTitle" class="card-title">Editar solicitud</h2>
+            <p class="card-subtitle">Solicitud <span id="editRequestLabel"></span></p>
+            <div class="grid-2 mt-4">
+                <label>Empresa o institución<input id="ed_empresa" type="text" required></label>
+                <label>Actividad<input id="ed_actividad" type="text"></label>
+                <label>Contacto<input id="ed_contacto" type="text" required></label>
+                <label>Correo<input id="ed_email" type="email" required></label>
+                <label>Teléfono<input id="ed_telefono" type="text"></label>
+                <label>Fax<input id="ed_fax" type="text"></label>
+                <label>Dirección<input id="ed_direccion" type="text"></label>
+                <label>Puesto<input id="ed_puesto" type="text"></label>
+                <label>Modalidad
+                    <select id="ed_modalidad">
+                        <option>Práctica profesional</option>
+                        <option>Pasantía</option>
+                    </select>
+                </label>
+                <label>Estado
+                    <select id="ed_estado">
+                        <option value="recibida">Recibida</option>
+                        <option value="en_revision">En revisión</option>
+                        <option value="contactada">Contactada</option>
+                        <option value="cerrada">Cerrada</option>
+                    </select>
+                </label>
+                <label>Entrevista
+                    <select id="ed_entrevista">
+                        <option value="Sí">Sí</option>
+                        <option value="No">No</option>
+                        <option value="No especificado">No especificado</option>
+                    </select>
+                </label>
+                <label>Horario<input id="ed_horario" type="text"></label>
+                <label>Vestimenta<input id="ed_vestimenta" type="text"></label>
+                <label>Otros requisitos<input id="ed_otro" type="text"></label>
+                <label class="col-span-2">Beneficios<input id="ed_checks" type="text"></label>
+                <label class="col-span-2">Especialidades y cantidades (solo lectura)
+                    <input id="ed_especialidades" type="text" readonly>
+                </label>
+            </div>
+            <div class="btn-row justify-end mt-5">
+                <button id="editCancel" type="button" class="btn btn-ghost">Cancelar</button>
+                <button id="editSave" type="submit" class="btn btn-primary">Guardar cambios</button>
+            </div>
+        </form>
+    </div>
+
+    <!-- MODAL CONFIRMAR ELIMINACIÓN -->
+    <div id="confirmModal" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="confirmTitle">
+        <div class="modal-card">
+            <h2 id="confirmTitle" class="card-title">Eliminar solicitud</h2>
+            <p id="confirmText" class="card-subtitle mt-2"></p>
+            <div class="btn-row justify-end mt-5">
+                <button id="confirmCancel" type="button" class="btn btn-ghost">Cancelar</button>
+                <button id="confirmDelete" type="button" class="btn btn-danger">Eliminar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MENÚ CONTEXTUAL DE SOLICITUD -->
+    <div id="contextMenu" class="context-menu hidden" role="menu">
+        <button type="button" role="menuitem" data-menu-action="edit">Editar solicitud</button>
+        <button type="button" role="menuitem" data-menu-action="delete" class="is-danger">Eliminar solicitud</button>
+    </div>
+
+    <script src="admin.js"></script>
+</body>
+</html>

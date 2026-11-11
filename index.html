@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Solicitud de estudiantes - CTP Uladislao Gámez Solano</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- SheetJS for Excel generation -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <link rel="stylesheet" href="index.css">
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Liberation+Sans:ital,wght@0,400;0,700;1,400&family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+    
+    <style>
+        body {
+            font-family: 'Liberation Sans', 'Roboto', Arial, sans-serif;
+            background-color: #f1f5f9;
+            color: #111827;
+        }
+
+        /* Printable / Paper format look */
+        .paper-sheet {
+            background-color: #ffffff;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+            width: 100%;
+            max-width: 920px;
+            margin: 20px auto;
+            padding: 38px 46px;
+            border-radius: 4px;
+        }
+
+        #solicitudForm label {
+            line-height: 1.45;
+        }
+
+        #solicitudForm .grid.grid-cols-12 > div.flex.items-end {
+            font-size: 0.8125rem;
+        }
+
+        /* Custom Underline Input field styling to mimic printed lines */
+        .input-underline {
+            border: none;
+            border-bottom: 1px solid #1f2937;
+            background-color: transparent;
+            outline: none;
+            padding: 0 4px;
+            width: 100%;
+            min-height: 40px;
+            font-size: 1rem;
+            color: #000000;
+            transition: border-color 0.2s, background-color 0.2s;
+        }
+        .input-underline:focus {
+            border-bottom: 2px solid #2563eb;
+            background-color: #f0f9ff;
+        }
+
+        .table-input {
+            width: 100%;
+            height: 100%;
+            border: none;
+            outline: none;
+            padding: 4px 8px;
+            background: transparent;
+            text-align: center;
+            font-size: 0.9rem;
+        }
+        .table-input:focus {
+            background-color: #eff6ff;
+        }
+
+        /* Custom Checkbox styling */
+        .custom-checkbox {
+            appearance: none;
+            -webkit-appearance: none;
+            width: 20px;
+            height: 20px;
+            border: 1.5px solid #1f2937;
+            border-radius: 3px;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 6px;
+            position: relative;
+            background-color: #fff;
+        }
+        .custom-checkbox:checked {
+            background-color: #1f2937;
+        }
+        .custom-checkbox:checked::after {
+            content: '✓';
+            color: white;
+            font-size: 13px;
+            font-weight: bold;
+        }
+
+        /* Custom Radio styling */
+        .custom-radio {
+            appearance: none;
+            -webkit-appearance: none;
+            width: 20px;
+            height: 20px;
+            border: 1.5px solid #1f2937;
+            border-radius: 50%;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 4px;
+            background-color: #fff;
+        }
+        .custom-radio:checked {
+            background-color: #1f2937;
+            box-shadow: inset 0 0 0 3px #fff;
+        }
+
+        @media print {
+            body { background-color: #fff; }
+            .paper-sheet { box-shadow: none; padding: 0; margin: 0; max-width: 100%; }
+            .no-print { display: none !important; }
+        }
+
+        @media (max-width: 640px) {
+            .paper-sheet {
+                padding: 22px 18px;
+                margin: 14px auto;
+            }
+
+            #solicitudForm .grid.grid-cols-12 > div.flex.items-end {
+                align-items: stretch;
+                flex-direction: column;
+                gap: 4px;
+            }
+
+            #solicitudForm .grid.grid-cols-12 > div > label {
+                white-space: normal;
+            }
+
+            #solicitudForm .grid.grid-cols-12 {
+                row-gap: 12px;
+            }
+        }
+    </style>
+</head>
+<body class="py-6 px-3 min-h-screen flex flex-col justify-between">
+
+    <!-- Top Floating Toolbar / Action Buttons -->
+    <div class="no-print max-w-4xl mx-auto w-full mb-4 bg-white p-4 rounded-xl shadow-md border border-slate-200 flex flex-wrap gap-3 items-center justify-between">
+        <div>
+            <h1 class="text-lg font-bold text-slate-800">Solicitudes de estudiantes</h1>
+            <p class="text-xs text-slate-500">Registre una oportunidad para estudiantes del CTP Uladislao Gámez Solano.</p>
+        </div>
+        <div class="flex items-center gap-2">
+            <button type="button" id="resetButton" class="px-3 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-lg border border-slate-300 transition">
+                Limpiar Formulario
+            </button>
+                <a href="admin/admin.html" class="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-sm rounded-lg shadow hover:shadow-md transition flex items-center gap-2">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                </svg>
+                    Panel de coordinación
+                </a>
+        </div>
+    </div>
+
+    <!-- Paper Sheet Document Replica -->
+    <div class="paper-sheet" id="form-container">
+        <form id="solicitudForm">
+            
+            <!-- HEADER SECTION -->
+            <div class="flex justify-between items-start mb-2 border-b border-gray-400 pb-2">
+                <!-- MEP Logo SVG Placeholder representation -->
+                <div class="w-28 flex flex-col items-start justify-center">
+                    <div class="flex items-center gap-1 font-bold text-gray-700 leading-tight">
+                        <span class="text-2xl font-black tracking-tighter text-blue-900">mep</span>
+                        <div class="text-[8px] uppercase leading-none text-gray-600 border-l border-gray-400 pl-1">
+                            Ministerio de<br>Educación Pública
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Center Text -->
+                <div class="text-center flex-1 px-2">
+                    <p class="font-bold text-gray-700 text-sm">Ministerio de Educación Pública</p>
+                    <p class="font-bold text-gray-700 text-xs">Colegio Técnico Profesional Uladislao Gámez Solano</p>
+                    <p class="text-xs text-gray-600">Tirrases, Curridabat</p>
+                    <p class="text-[11px] text-gray-600">Teléfono: 2276-5536 Correo electrónico: ctp.uladislaogamezsolano@mep.go.cr</p>
+                </div>
+
+                <!-- School Logo Placeholder -->
+                <div class="w-20 flex justify-end">
+                    <div class="w-12 h-12 rounded-full border-2 border-green-700 flex items-center justify-center p-1 text-center bg-emerald-50">
+                        <span class="text-[8px] font-bold text-green-900 leading-tight">CTP Uladislao Gámez</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TITLE SECTION -->
+            <div class="text-center my-4">
+                <h2 class="font-bold text-base tracking-wide text-black">FORMULARIO PARA SOLICITUD DE ESTUDIANTES <span id="cycleTitle">—</span></h2>
+                <p class="font-bold text-xs text-black mt-0.5">La solicitud se registra directamente para revisión de coordinación.</p>
+            </div>
+
+            <fieldset class="mb-5 rounded-lg border border-slate-300 bg-slate-50 p-4">
+                <legend class="px-1 text-sm font-bold text-slate-900">1. Seleccione la modalidad</legend>
+                <p id="offerIntro" class="mb-3 text-xs text-slate-600">Cargando la oferta vigente…</p>
+                <div id="modalityOptions" class="grid gap-3 md:grid-cols-2"></div>
+            </fieldset>
+
+            <!-- GENERAL DATA FIELDS -->
+            <div class="grid grid-cols-12 gap-x-4 gap-y-2 mb-4 text-xs">
+                <!-- Row 1 -->
+                <div class="col-span-12 sm:col-span-7 flex items-end">
+                    <label class="whitespace-nowrap font-medium text-black mr-1">Empresa o institución:</label>
+                    <input type="text" id="empresa" class="input-underline" required placeholder="Nombre de la empresa">
+                </div>
+                <div class="col-span-12 sm:col-span-5 flex items-end">
+                    <label class="whitespace-nowrap font-medium text-black mr-1">Fecha:</label>
+                    <input type="date" id="fecha" class="input-underline text-center">
+                </div>
+
+                <!-- Row 2 -->
+                <div class="col-span-12 sm:col-span-7 flex items-end">
+                    <label class="whitespace-nowrap font-medium text-black mr-1">Actividad:</label>
+                    <input type="text" id="actividad" class="input-underline">
+                </div>
+                <div class="col-span-12 sm:col-span-5 flex items-end">
+                    <label class="whitespace-nowrap font-medium text-black mr-1">Teléfono:</label>
+                    <input type="tel" id="telefono" class="input-underline">
+                </div>
+
+                <!-- Row 3 -->
+                <div class="col-span-12 sm:col-span-7 flex items-end">
+                    <label class="whitespace-nowrap font-medium text-black mr-1">Dirección:</label>
+                    <input type="text" id="direccion" class="input-underline">
+                </div>
+                <div class="col-span-12 sm:col-span-5 flex items-end">
+                    <label class="whitespace-nowrap font-medium text-black mr-1">Fax:</label>
+                    <input type="text" id="fax" class="input-underline">
+                </div>
+
+                <!-- Row 4 -->
+                <div class="col-span-12 sm:col-span-7 flex items-end">
+                    <label class="whitespace-nowrap font-medium text-black mr-1">Nombre y apellidos de contacto:</label>
+                    <input type="text" id="contacto" class="input-underline" required>
+                </div>
+                <div class="col-span-12 sm:col-span-5 flex items-end">
+                    <label class="whitespace-nowrap font-medium text-black mr-1">E-mail:</label>
+                    <input type="email" id="email" class="input-underline" required>
+                </div>
+
+                <!-- Row 5 -->
+                <div class="col-span-12 sm:col-span-7 flex items-end">
+                    <!-- Blank alignment filler as in original -->
+                </div>
+                <div class="col-span-12 sm:col-span-5 flex items-end">
+                    <label class="whitespace-nowrap font-medium text-black mr-1">Puesto:</label>
+                    <input type="text" id="puesto" class="input-underline">
+                </div>
+            </div>
+
+            <section class="mb-5" aria-labelledby="specialtiesTitle">
+                <h3 id="specialtiesTitle" class="mb-1 text-sm font-bold text-slate-900">2. Especialidades y cantidad de estudiantes</h3>
+                <p class="mb-3 text-xs text-slate-600">Marque las especialidades que puede recibir e indique cuántos estudiantes necesita.</p>
+                <div class="overflow-x-auto rounded-md border border-slate-300">
+                    <table class="w-full border-collapse text-xs">
+                        <thead class="bg-slate-100 text-left text-slate-700"><tr><th class="p-2">Especialidad</th><th class="w-36 p-2 text-center">Cantidad</th></tr></thead>
+                        <tbody id="specialtyOptions"></tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- COMPANY REQUIREMENTS BOX -->
+            <div class="mb-4">
+                <div class="text-center font-bold text-xs mb-1">Requisitos de la empresa</div>
+                <div class="border border-black p-2 text-xs space-y-1.5">
+                    <div class="flex items-center gap-4">
+                        <span class="font-medium">Entrevista:</span>
+                        <label class="flex items-center cursor-pointer">
+                            <input type="radio" name="entrevista" value="Sí" class="custom-radio"> Sí
+                        </label>
+                        <label class="flex items-center cursor-pointer">
+                            <input type="radio" name="entrevista" value="No" class="custom-radio"> No
+                        </label>
+                    </div>
+                    <div class="flex items-center">
+                        <label class="font-medium mr-1 whitespace-nowrap">Horario:</label>
+                        <input type="text" id="req_horario" class="input-underline">
+                    </div>
+                    <div class="flex items-center">
+                        <label class="font-medium mr-1 whitespace-nowrap">Vestimenta:</label>
+                        <input type="text" id="req_vestimenta" class="input-underline">
+                    </div>
+                    <div class="flex items-center">
+                        <label class="font-medium mr-1 whitespace-nowrap">Otros: especifique</label>
+                        <input type="text" id="req_otros" class="input-underline">
+                    </div>
+                </div>
+            </div>
+
+            <!-- BENEFITS & GENERAL INFO SECTION -->
+            <div class="grid grid-cols-12 gap-4 items-start mb-6">
+                <!-- Checkboxes Left side -->
+                <div class="col-span-12 md:col-span-7 space-y-1.5 text-xs">
+                    <div>
+                        <label class="flex items-center cursor-pointer">
+                            <input type="checkbox" id="beneficio_uniforme" class="custom-checkbox"> Uniforme
+                        </label>
+                    </div>
+                    <div>
+                        <label class="flex items-center cursor-pointer">
+                            <input type="checkbox" id="beneficio_transporte" class="custom-checkbox"> Transporte
+                        </label>
+                    </div>
+                    <div>
+                        <label class="flex items-center cursor-pointer">
+                            <input type="checkbox" id="beneficio_alimentacion" class="custom-checkbox"> Alimentación
+                        </label>
+                    </div>
+                    <div>
+                        <label class="flex items-center cursor-pointer">
+                            <input type="checkbox" id="beneficio_gratificacion" class="custom-checkbox"> Gratificación económica
+                        </label>
+                    </div>
+                    <div>
+                        <label class="flex items-center cursor-pointer">
+                            <input type="checkbox" id="beneficio_empleo" class="custom-checkbox"> Posibilidad de empleo
+                        </label>
+                    </div>
+                    <div>
+                        <label class="flex items-center cursor-pointer">
+                            <input type="checkbox" id="beneficio_ninguno" class="custom-checkbox"> Ninguno
+                        </label>
+                    </div>
+                    <div class="flex items-end">
+                        <label class="flex items-center cursor-pointer whitespace-nowrap mr-1">
+                            <input type="checkbox" id="beneficio_otro_check" class="custom-checkbox"> Otro, especifique:
+                        </label>
+                        <input type="text" id="beneficio_otro_texto" class="input-underline">
+                    </div>
+                </div>
+
+                <!-- Info Box Right side -->
+                <div class="col-span-12 md:col-span-5">
+                    <div class="border border-black p-2 text-[10px] leading-tight text-gray-800 bg-white">
+                        <p class="font-bold text-black mb-1">Información general:</p>
+                        <p class="mb-1">Los estudiantes cuentan con póliza estudiantil.</p>
+                        <p class="mb-1">La coordinación con la empresa dispone de una bolsa de empleo.</p>
+                        <p class="mb-1">
+                            Las empresas pueden utilizar la plataforma electrónica de empleo 
+                            <a href="https://www.ane.cr" target="_blank" class="text-blue-700 underline font-semibold">www.ane.cr</a>, 
+                            para más información ingrese al link <span class="break-all text-[9px] text-gray-600">https://forms.office.com/r/tfvgrb3aHmG</span>
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <div id="formStatus" class="mt-4 hidden rounded-md p-3 text-sm" role="status" aria-live="polite"></div>
+            <div class="mt-5 flex justify-end">
+                <button id="submitButton" type="submit" class="rounded-md bg-emerald-700 px-5 py-3 text-sm font-bold text-white hover:bg-emerald-800 disabled:cursor-wait disabled:opacity-60">Registrar solicitud</button>
+            </div>
+        </form>
+    </div>
+
+    <!-- Feedback Modal -->
+    <div id="modalConfirm" class="fixed inset-0 bg-black/50 backdrop-blur-sm hidden items-center justify-center p-4 z-50" role="dialog" aria-modal="true" aria-labelledby="modalConfirmTitle">
+        <div class="bg-white rounded-lg shadow-xl max-w-md w-full p-6 text-center">
+            <div class="w-12 h-12 bg-emerald-100 text-emerald-700 rounded-full flex items-center justify-center mx-auto mb-4" aria-hidden="true">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                </svg>
+            </div>
+            <h3 id="modalConfirmTitle" class="text-lg font-bold text-gray-900 mb-2">Solicitud registrada</h3>
+            <p class="text-sm text-gray-600 mb-6">La coordinación recibió la solicitud. Puede descargar una copia para sus registros.</p>
+            <div class="flex flex-wrap justify-center gap-2">
+                <button id="downloadSubmissionButton" type="button" class="px-4 py-2 bg-emerald-700 hover:bg-emerald-800 text-white text-sm font-semibold rounded-md">Descargar copia Excel</button>
+                <button id="closeModalButton" type="button" class="px-4 py-2 border border-slate-300 text-slate-700 text-sm font-semibold rounded-md">Cerrar</button>
+            </div>
+        </div>
+    </div>
+    <script src="index.js"></script>
+</body>
+</html>
