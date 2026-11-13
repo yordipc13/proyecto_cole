@@ -48,6 +48,8 @@ const offerEditorModal = document.getElementById('offerEditorModal');
 const offerEditorStatus = document.getElementById('offerEditorStatus');
 const contextMenu = document.getElementById('contextMenu');
 let contextMenuRequestId = null;
+const excelStatus = document.getElementById('excelStatus');
+let excelLink = null;
 
 function localDateValue() {
 	const now = new Date();
@@ -68,6 +70,7 @@ function hideMessage(element) {
 }
 
 function setAccess(allowed) {
+	document.querySelector('.admin-main').classList.toggle('is-login', !allowed);
 	loginSection.classList.toggle('hidden', allowed);
 	adminPanel.classList.toggle('hidden', !allowed);
 	document.getElementById('logoutButton').classList.toggle('hidden', !allowed);
@@ -97,7 +100,7 @@ async function verifyCoordinator() {
 
 	setAccess(true);
 	hideMessage(panelStatus);
-	Promise.all([loadRequests(), loadAnnualOffers()]).catch((loadError) => {
+	Promise.all([loadRequests(), loadAnnualOffers(), loadExcelLink()]).catch((loadError) => {
 		console.error('Error al cargar datos:', loadError);
 		showMessage(panelStatus, `No se pudieron cargar los datos: ${loadError.message}`, 'error');
 	});
@@ -897,6 +900,120 @@ function bindTheme() {
 	});
 }
 
+async function loadExcelLink() {
+	const { data, error } = await supabaseClient
+		.from('excel_vinculo')
+		.select('nombre, url, ultima_sincronizacion, filas')
+		.eq('id', 1)
+		.maybeSingle();
+	if (error) throw error;
+	excelLink = data;
+	renderExcelCard();
+}
+
+function renderExcelCard() {
+	const linked = Boolean(excelLink);
+	document.getElementById('excelCreateButton').classList.toggle('hidden', linked);
+	['excelSyncButton', 'excelOpenButton', 'excelUnlinkButton'].forEach((id) => {
+		document.getElementById(id).classList.toggle('hidden', !linked);
+	});
+	document.getElementById('excelOpenButton').disabled = !excelLink?.url;
+	document.getElementById('excelCreateFields').classList.toggle('hidden', linked);
+
+	const statusText = document.getElementById('excelStatusText');
+	if (!linked) {
+		statusText.textContent = 'Todavía no hay un Excel creado. Pegue el enlace de la carpeta y créelo una sola vez; después todas las solicitudes nuevas se agregan a ese mismo archivo.';
+		return;
+	}
+	const lastSync = excelLink.ultima_sincronizacion
+		? `Última sincronización: ${new Date(excelLink.ultima_sincronizacion).toLocaleString('es-CR')} (${excelLink.filas ?? 0} filas).`
+		: 'Aún no se ha sincronizado.';
+	statusText.textContent = `Archivo vinculado: ${excelLink.nombre}. ${lastSync}`;
+}
+
+async function invokeExcel(accion, extra = {}) {
+	const { data, error } = await supabaseClient.functions.invoke('sincronizar-excel', { body: { accion, ...extra } });
+	if (error) {
+		let message = error.message;
+		try {
+			message = (await error.context.json()).error || message;
+		} catch {
+			// Sin detalle adicional: se usa el mensaje general.
+		}
+		throw new Error(message);
+	}
+	if (!data?.ok) throw new Error(data?.error || 'No se pudo completar la operación.');
+	return data;
+}
+
+async function runExcelAction(accion, pendingText, doneText, extra = {}) {
+	const buttonIds = ['excelCreateButton', 'excelSyncButton', 'excelUnlinkButton'];
+	buttonIds.forEach((id) => { document.getElementById(id).disabled = true; });
+	showMessage(excelStatus, pendingText, 'info');
+	try {
+		const result = await invokeExcel(accion, extra);
+		await loadExcelLink();
+		showMessage(excelStatus, doneText(result), 'success');
+	} catch (error) {
+		console.error('Error con el Excel:', error);
+		showMessage(excelStatus, `No se pudo completar: ${error.message}`, 'error');
+	} finally {
+		buttonIds.forEach((id) => { document.getElementById(id).disabled = false; });
+	}
+}
+
+function createExcel() {
+	const folderLink = document.getElementById('excelFolderLink').value.trim();
+	if (!folderLink) {
+		showMessage(excelStatus, 'Pegue el enlace de la carpeta donde se creará el Excel.', 'error');
+		return;
+	}
+	return runExcelAction(
+		'crear',
+		'Creando el Excel y cargando las solicitudes…',
+		() => 'Excel creado. Todas las solicitudes quedaron en ese archivo.',
+		{ enlace: folderLink }
+	);
+}
+
+function syncExcel() {
+	return runExcelAction(
+		'sincronizar',
+		'Sincronizando solicitudes…',
+		(result) => `Sincronización completa: ${result.filas ?? 0} filas.`
+	);
+}
+
+function openExcel() {
+	if (excelLink?.url) window.open(excelLink.url, '_blank', 'noopener');
+}
+
+async function unlinkExcel() {
+	if (!excelLink) return;
+	const confirmed = window.confirm('¿Desvincular el Excel? El archivo no se borra, pero las solicitudes nuevas dejarán de agregarse a él.');
+	if (!confirmed) return;
+
+	const { data, error } = await supabaseClient
+		.from('excel_vinculo')
+		.delete()
+		.eq('id', 1)
+		.select('id');
+	if (error || !data?.length) {
+		showMessage(excelStatus, 'No se pudo desvincular el Excel. Revise los permisos de su cuenta.', 'error');
+		return;
+	}
+	excelLink = null;
+	renderExcelCard();
+	showMessage(excelStatus, 'Excel desvinculado. Puede crear uno nuevo cuando lo necesite.', 'success');
+}
+
+function bindExcel() {
+	document.getElementById('excelCreateButton').addEventListener('click', createExcel);
+	document.getElementById('excelSyncButton').addEventListener('click', syncExcel);
+	document.getElementById('excelOpenButton').addEventListener('click', openExcel);
+	document.getElementById('excelUnlinkButton').addEventListener('click', unlinkExcel);
+}
+
 function bindOfferEditor() {
 	document.getElementById('configureCycleButton').addEventListener('click', openCycleModal);
 	document.getElementById('cycleModalClose').addEventListener('click', closeCycleModal);
@@ -971,6 +1088,7 @@ document.addEventListener('DOMContentLoaded', () => {
 	});
 	bindOfferEditor();
 	bindRequestActions();
+	bindExcel();
 
 	editForm.addEventListener('submit', handleEditSubmit);
 	document.getElementById('editCancel').addEventListener('click', closeEditModal);

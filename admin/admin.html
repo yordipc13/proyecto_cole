@@ -38,18 +38,32 @@
         <p id="panelStatus" class="status-line hidden" role="status" aria-live="polite"></p>
 
         <!-- LOGIN -->
-        <section id="loginSection" class="card hidden" aria-labelledby="loginTitle">
-            <h2 id="loginTitle" class="card-title">Acceso del personal</h2>
-            <p class="card-subtitle">Acceso reservado al personal autorizado.</p>
-            <form id="loginForm" class="login-form" autocomplete="on">
-                <label>Correo institucional
-                    <input id="loginEmail" type="email" required autocomplete="username">
-                </label>
-                <label>Contraseña
-                    <input id="loginPassword" type="password" required autocomplete="current-password">
-                </label>
-                <button type="submit" class="btn btn-primary">Ingresar</button>
-            </form>
+        <section id="loginSection" class="card login-card hidden" aria-labelledby="loginTitle">
+            <div class="login-brand">
+                <div class="login-brand-top">
+                    <span class="login-brand-mark" aria-hidden="true">CTP</span>
+                    <p class="login-brand-caption">PORTAL INSTITUCIONAL</p>
+                </div>
+                <div class="login-brand-copy">
+                    <p class="login-brand-title">Gestión de solicitudes</p>
+                    <p class="login-brand-name">CTP Uladislao Gámez Solano</p>
+                </div>
+                <p class="login-brand-foot">Ministerio de Educación Pública</p>
+            </div>
+            <div class="login-form-panel">
+                <p class="login-form-kicker">PERSONAL AUTORIZADO</p>
+                <h2 id="loginTitle" class="card-title">Acceso del personal</h2>
+                <p class="card-subtitle">Ingrese sus credenciales institucionales para continuar.</p>
+                <form id="loginForm" class="login-form" autocomplete="on">
+                    <label>Correo institucional
+                        <input id="loginEmail" type="email" required autocomplete="username">
+                    </label>
+                    <label>Contraseña
+                        <input id="loginPassword" type="password" required autocomplete="current-password">
+                    </label>
+                    <button type="submit" class="btn btn-primary">Ingresar</button>
+                </form>
+            </div>
         </section>
 
         <!-- PANEL -->
@@ -64,6 +78,28 @@
                     </div>
                     <button id="configureCycleButton" type="button" class="btn btn-outline">Configurar ciclo</button>
                 </div>
+            </section>
+
+            <!-- EXCEL -->
+            <section class="card" aria-labelledby="excelTitle">
+                <div class="card-head">
+                    <div>
+                        <h2 id="excelTitle" class="card-title">Excel de solicitudes</h2>
+                        <p id="excelStatusText" class="card-subtitle">Cargando…</p>
+                    </div>
+                    <div class="btn-row">
+                        <button id="excelCreateButton" type="button" class="btn btn-primary hidden">Crear Excel</button>
+                        <button id="excelSyncButton" type="button" class="btn btn-outline hidden">Sincronizar ahora</button>
+                        <button id="excelOpenButton" type="button" class="btn btn-outline hidden">Abrir Excel</button>
+                        <button id="excelUnlinkButton" type="button" class="btn btn-danger hidden">Desvincular</button>
+                    </div>
+                </div>
+                <div id="excelCreateFields" class="excel-folder-field hidden">
+                    <label for="excelFolderLink">Enlace de la carpeta de OneDrive o SharePoint donde se creará el Excel</label>
+                    <input id="excelFolderLink" type="url" placeholder="https://…" autocomplete="off">
+                    <p class="hint">En OneDrive o SharePoint: clic derecho en la carpeta → Compartir → Copiar vínculo.</p>
+                </div>
+                <p id="excelStatus" class="status-line hidden" role="status" aria-live="polite"></p>
             </section>
 
             <!-- SOLICITUDES -->
